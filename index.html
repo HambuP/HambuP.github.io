@@ -1,0 +1,996 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Santiago Forero · HambuP</title>
+<meta name="description" content="Santiago Forero (HambuP): computer graphics, CS @ UCLA. A CPU software rasterizer written from scratch in C++, plus a live renderer running in your browser.">
+<meta name="author" content="Santiago Forero">
+<meta property="og:title" content="Santiago Forero · HambuP">
+<meta property="og:description" content="Computer graphics, built from scratch. CS @ UCLA '30.">
+<meta property="og:image" content="https://hambup.me/assets/hero-final.png">
+<meta property="og:url" content="https://hambup.me/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.5 22.5 21h-21z' fill='%23f07a1a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<script>
+  // Apply the saved theme before first paint so there is no flash.
+  try { var t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<style>
+:root {
+  --bg:#f3f3f3; --panel:#ffffff; --panel2:#fafafa; --ink:#111111; --muted:#5a5a5a; --faint:#8a8a8a;
+  --line:#dedede; --line2:#c6c6c6; --accent:#f07a1a; --accent-ink:#b4530a; --accent-soft:#fff1e4;
+  --chip:rgba(255,255,255,0.82); --ghost:rgba(0,0,0,0.045); --shadow:rgba(0,0,0,0.28); --canvas:#e9e9e9;
+  --display:'Unbounded','Arial Black',sans-serif; --body:'IBM Plex Sans','Helvetica Neue',Arial,sans-serif; --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:#0b0b0b; --panel:#141414; --panel2:#181818; --ink:#eeeeee; --muted:#a0a0a0; --faint:#6f6f6f;
+    --line:#242424; --line2:#363636; --accent-ink:#ff9d4d; --accent-soft:#2a1a0d;
+    --chip:rgba(18,18,18,0.78); --ghost:rgba(255,255,255,0.035); --shadow:rgba(0,0,0,0.75); --canvas:#121212; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:#0b0b0b; --panel:#141414; --panel2:#181818; --ink:#eeeeee; --muted:#a0a0a0; --faint:#6f6f6f;
+  --line:#242424; --line2:#363636; --accent-ink:#ff9d4d; --accent-soft:#2a1a0d;
+  --chip:rgba(18,18,18,0.78); --ghost:rgba(255,255,255,0.035); --shadow:rgba(0,0,0,0.75); --canvas:#121212; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--body); padding: 0 24px 72px; transition: background-color .3s ease, color .3s ease; }
+a { color: var(--accent-ink); text-underline-offset: 3px; }
+a:hover { color: var(--accent); }
+button { font: inherit; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+::selection { background: var(--accent); color: #fff; }
+img { max-width: 100%; }
+.mono { font-family: var(--mono); }
+.label { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; font-weight: 700; color: var(--accent-ink); }
+.faint-label { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; color: var(--faint); }
+.wrap { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 140px; }
+section { scroll-margin-top: 90px; }
+
+/* Nav */
+nav.top { position: sticky; top: calc(14px + env(safe-area-inset-top, 0px)); z-index: 50; display: flex; justify-content: center; padding-top: 14px; }
+.pill { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: center; background: var(--chip); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--line); border-radius: 999px; padding: 5px 6px 5px 5px; font: 12px var(--mono); letter-spacing: .06em; }
+.pill a.lnk { color: var(--muted); text-decoration: none; padding: 8px 10px; }
+.pill a.lnk:hover { color: var(--ink); }
+.pill .sep { width: 1px; height: 18px; background: var(--line2); margin: 0 4px; }
+.icon-btn { width: 36px; height: 36px; border-radius: 50%; border: 0; background: transparent; color: var(--ink); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.resume { color: var(--bg) !important; background: var(--ink); text-decoration: none; padding: 8px 14px; border-radius: 999px; font-weight: 700; margin: 0 2px 0 4px; }
+.sun { display: none; }
+:root[data-theme="dark"] .sun { display: block; } :root[data-theme="dark"] .moon { display: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sun { display: block; } :root:not([data-theme="light"]) .moon { display: none; } }
+
+/* Hero */
+header.hero { display: flex; flex-direction: column; gap: 30px; padding-top: 96px; }
+h1 { margin: 0; font: 800 clamp(50px, 11.5vw, 176px)/0.9 var(--display); letter-spacing: -0.05em; text-transform: uppercase; }
+h1 .line { display: block; }
+.ltr { display: inline-block; animation: rise .8s cubic-bezier(.2,.75,.2,1) both; }
+@keyframes rise { from { transform: translateY(.32em); opacity: .12; } to { transform: none; opacity: 1; } }
+.rule { height: 1px; background: var(--line); }
+.hero-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px; }
+.hero-row .intro { flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 8px; max-width: 54ch; }
+.hero-row .intro p { margin: 0; font-size: 19px; line-height: 1.5; }
+.meta { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font: 12px var(--mono); letter-spacing: .1em; }
+.status { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 7px 14px; background: var(--accent-soft); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block; animation: pulse 1.8s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(.8); } }
+
+/* Section heads */
+.shead { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.shead .t { display: flex; align-items: center; gap: 14px; }
+h2 { margin: 0; font: 700 clamp(28px, 3.6vw, 44px)/1.1 var(--display); letter-spacing: -0.03em; }
+h4 { margin: 0; font: 700 28px/1.1 var(--display); letter-spacing: -0.03em; }
+
+/* Live renderer */
+.live { display: flex; flex-direction: column; gap: 22px; }
+.viewport { position: relative; background: var(--canvas); border-radius: 10px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 50px 90px -50px var(--shadow); }
+.viewport canvas { width: 100%; aspect-ratio: 16 / 9; display: block; image-rendering: pixelated; cursor: crosshair; touch-action: pan-y; }
+.hud { position: absolute; pointer-events: none; font: 11px var(--mono); letter-spacing: .06em; background: var(--chip); color: var(--ink); padding: 5px 8px; border-radius: 4px; font-variant-numeric: tabular-nums; }
+.hud.pass { background: var(--accent); color: #111; font-weight: 700; letter-spacing: .08em; }
+.hud-tl { top: 12px; left: 12px; display: flex; flex-direction: column; gap: 6px; position: absolute; align-items: flex-start; }
+.hud-tl .hud { position: static; }
+.passes { display: flex; flex-wrap: wrap; gap: 8px; }
+.passbtn { flex: 1 1 108px; min-height: 60px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; padding: 8px 12px; border-radius: 8px; cursor: pointer; text-align: left; font-family: var(--mono); background: var(--panel); color: var(--ink); border: 1px solid var(--line); transition: background-color .15s ease; }
+.passbtn .n { font-size: 11px; color: var(--faint); }
+.passbtn .l { font-size: 13px; font-weight: 500; }
+.passbtn[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); box-shadow: inset 0 -3px 0 var(--accent); }
+.passbtn[aria-pressed="true"] .n { color: var(--accent); }
+.live-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 24px 48px; }
+.live-foot .txt { flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 10px; max-width: 66ch; }
+.live-foot .txt p { margin: 0; }
+.live-foot .big { font-size: 20px; line-height: 1.45; }
+.muted { color: var(--muted); }
+.controls { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.run { min-height: 48px; padding: 0 22px; border: 0; border-radius: 999px; background: var(--accent); color: #111; font: 700 13px var(--mono); letter-spacing: .06em; cursor: pointer; }
+.chip-btn { font: 500 12px var(--mono); padding: 0 14px; min-height: 36px; border-radius: 999px; cursor: pointer; background: var(--panel); color: var(--ink); border: 1px solid var(--line2); }
+.chip-btn[aria-pressed="true"], .chip-btn[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.row-gap { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+/* Project cards */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 16px; }
+.lift { transition: transform .2s ease, border-color .2s ease; }
+.lift:hover { transform: translateY(-3px); border-color: var(--accent) !important; }
+.pcard { text-align: left; padding: 0; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 14px; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; }
+.pcard .thumb { position: relative; display: block; }
+.pcard .thumb img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: block; }
+.tag { position: absolute; top: 12px; font: 11px var(--mono); letter-spacing: .08em; padding: 5px 8px; border-radius: 4px; }
+.pcard .body { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 12px; }
+.pcard .title { font: 800 24px/1.1 var(--display); letter-spacing: -0.03em; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.stats span { background: var(--panel2); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.stats b { font: 700 18px var(--display); }
+.stats small { font: 10px var(--mono); letter-spacing: .08em; color: var(--muted); }
+.soon { border: 1px dashed var(--line2); border-radius: 14px; padding: 24px 20px; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; min-height: 260px; background: var(--ghost); }
+
+/* Project dialog */
+dialog.proj { width: min(1120px, calc(100vw - 32px)); max-width: none; max-height: calc(100dvh - 48px); margin: 24px auto; padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--ink); box-shadow: 0 60px 120px -40px rgba(0,0,0,.6); }
+dialog.proj::backdrop { background: rgba(0,0,0,.6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.proj-inner { position: relative; overflow: hidden; padding: clamp(20px, 4vw, 48px); display: flex; flex-direction: column; gap: 40px; }
+.ghost-num { position: absolute; top: -0.12em; right: 0.04em; font: 800 clamp(140px, 22vw, 320px)/1 var(--display); color: var(--ghost); pointer-events: none; letter-spacing: -0.06em; }
+.close { position: sticky; top: 16px; float: right; align-self: flex-end; z-index: 3; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line2); background: var(--panel); color: var(--ink); cursor: pointer; font: 700 12px var(--mono); letter-spacing: .06em; margin-bottom: -40px; }
+.proj h3 { margin: 0; font: 800 clamp(34px, 5.4vw, 72px)/0.98 var(--display); letter-spacing: -0.045em; }
+.lead { margin: 0; font-size: 20px; line-height: 1.45; color: var(--muted); }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.obtn { display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line2); color: var(--ink); text-decoration: none; font: 12px var(--mono); letter-spacing: .06em; }
+.obtn.primary { background: var(--accent); color: #111; border-color: var(--accent); font-weight: 700; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+figcaption { font-size: 14px; color: var(--muted); }
+figcaption.mono { font: 12px var(--mono); }
+.split { display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; }
+.quote { margin: 0; font: 600 clamp(22px, 2.4vw, 30px)/1.2 var(--display); letter-spacing: -0.02em; }
+.motion { display: flex; flex-wrap: wrap; gap: 16px; }
+.motion figure { flex: 1 1 360px; min-width: 0; }
+.motion img { width: 100%; display: block; border-radius: 8px; aspect-ratio: 480 / 359; object-fit: cover; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+.fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+.fcard { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.fcard ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.fcard li { display: flex; gap: 10px; font-size: 14px; line-height: 1.5; }
+.fcard li::before { content: "▸"; color: var(--accent); flex: none; }
+.perf-row { display: flex; flex-direction: column; gap: 6px; }
+.perf-top { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.perf-bar { display: flex; align-items: center; gap: 12px; }
+.track { flex: 1; height: 26px; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.fill { height: 100%; background: var(--accent); transition: width .5s cubic-bezier(.2,.75,.2,1); }
+.note { margin: 0; color: var(--muted); max-width: 70ch; border-left: 2px solid var(--accent); padding-left: 14px; }
+.code { position: relative; background: #0f0f0f; color: #e8e8e8; border-radius: 8px; overflow-x: auto; }
+.code pre { margin: 0; padding: 18px 20px; font: 13px/1.7 var(--mono); white-space: pre; }
+.code button { position: absolute; top: 10px; right: 10px; min-height: 32px; padding: 0 12px; border: 1px solid #3a3a3a; background: #1c1c1c; color: #e8e8e8; border-radius: 4px; cursor: pointer; font: 11px var(--mono); }
+pre.run-cmd { margin: 0; padding: 14px 20px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; font: 12px/1.8 var(--mono); color: var(--muted); white-space: pre; }
+kbd { font-family: var(--mono); border: 1px solid var(--line2); border-bottom-width: 3px; border-radius: 5px; padding: 2px 7px; background: var(--panel); }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; align-items: center; font-size: 14px; }
+.keys > span:nth-child(odd) { display: flex; gap: 4px; }
+.lim { border: 1px dashed var(--line2); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; }
+.lim b { font-weight: 600; }
+.lim span { font-size: 14px; color: var(--muted); }
+.sub { display: flex; flex-direction: column; gap: 18px; border-top: 1px solid var(--line); padding-top: 36px; }
+.bugs { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 12px; scroll-snap-type: x mandatory; }
+.bug { flex: 0 0 min(320px, 80vw); scroll-snap-align: start; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; text-decoration: none; color: var(--ink); display: flex; flex-direction: column; }
+.bug img { width: 100%; aspect-ratio: 1035 / 722; object-fit: cover; display: block; background: #000; }
+.bug div { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; }
+.bug b { font-weight: 600; }
+
+/* Timeline */
+.timeline { position: relative; display: flex; flex-direction: column; gap: 14px; padding-left: 28px; }
+.timeline::before { content: ""; position: absolute; left: 6px; top: 10px; bottom: 10px; width: 1px; background: var(--line2); }
+.tcard { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; display: flex; flex-direction: column; gap: 6px; }
+.tcard::before { content: ""; position: absolute; left: -27px; top: 26px; width: 11px; height: 11px; border-radius: 50%; box-sizing: border-box; background: var(--bg); border: 2px solid var(--line2); }
+.tcard.now::before { background: var(--accent); border-color: var(--accent); }
+.tcard .ttl { font: 700 20px var(--display); letter-spacing: -0.02em; }
+.tcard .where { font: 11px var(--mono); letter-spacing: .1em; color: var(--faint); }
+.tcard p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
+.tcard .view { align-self: flex-start; margin-top: 8px; min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line2); background: transparent; color: var(--accent-ink); cursor: pointer; font: 700 12px var(--mono); letter-spacing: .06em; }
+
+/* Contact */
+.contact { display: flex; flex-direction: column; align-items: center; gap: 28px; text-align: center; }
+.contact h2 { font: 800 clamp(40px, 7vw, 96px)/0.98 var(--display); letter-spacing: -0.045em; }
+.ccards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; width: 100%; max-width: 1040px; text-align: left; }
+.ccard { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; text-decoration: none; color: var(--ink); display: flex; flex-direction: column; gap: 6px; }
+.ccard .k { display: flex; align-items: center; gap: 8px; font: 700 11px var(--mono); letter-spacing: .14em; color: var(--accent-ink); }
+.ccard .v { font-weight: 500; overflow-wrap: anywhere; }
+.ccard button { align-self: flex-start; margin-top: 4px; min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line2); background: transparent; color: var(--ink); cursor: pointer; font: 11px var(--mono); letter-spacing: .06em; }
+.hello { display: inline-flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 8px 0 24px; border-radius: 999px; border: 1px solid var(--line2); background: var(--panel); color: var(--ink); text-decoration: none; font-weight: 600; }
+.hello span { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); color: #111; display: inline-flex; align-items: center; justify-content: center; }
+footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 22px; font: 12px var(--mono); letter-spacing: .1em; color: var(--faint); }
+footer a { color: var(--muted); text-decoration: none; }
+.progress { position: fixed; left: 0; bottom: 0; height: 3px; z-index: 60; background: var(--accent); width: 0; transition: width .1s linear; }
+
+@media (max-width: 560px) {
+  body { padding: 0 16px 56px; }
+  .wrap { gap: 96px; }
+  header.hero { padding-top: 56px; }
+  .pill a.lnk { padding: 8px 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .ltr, .dot { animation: none; }
+  .lift, .fill { transition: none; }
+}
+</style>
+</head>
+<body id="top">
+
+<nav class="top" aria-label="Main">
+  <div class="pill">
+    <a href="#top" aria-label="Back to top" style="display:flex"><img src="assets/avatar.png" alt="" width="32" height="32" style="border-radius:50%"></a>
+    <a class="lnk" href="#live">LIVE</a>
+    <a class="lnk" href="#projects">PROJECTS</a>
+    <a class="lnk" href="#journey">JOURNEY</a>
+    <a class="lnk" href="#contact">CONTACT</a>
+    <span class="sep"></span>
+    <button class="icon-btn" id="theme-toggle" type="button" aria-label="Switch color theme">
+      <svg class="moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 1 1 9.8 3.5a6.6 6.6 0 0 0 10.7 10.7z"/></svg>
+      <svg class="sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.2M12 19.8V22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2 12h2.2M19.8 12H22M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg>
+    </button>
+    <a href="https://www.youtube.com/@HambuPdev" aria-label="YouTube channel @HambuPdev" style="display:flex;align-items:center;justify-content:center;width:40px;height:36px"><svg width="22" height="16" viewBox="0 0 28 20" aria-hidden="true"><rect width="28" height="20" rx="5.5" fill="#FF0000"/><path d="M11.2 5.6v8.8L18.8 10z" fill="#FFFFFF"/></svg></a>
+    <a class="resume" href="/resume.pdf">RÉSUMÉ ↗</a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+<header class="hero">
+  <span class="label" style="letter-spacing:.18em">@HAMBUP · PORTFOLIO · 2026</span>
+  <h1 aria-label="Santiago Forero">
+    <span class="line" id="name-a" aria-hidden="true">SANTIAGO</span>
+    <span class="line" id="name-b" aria-hidden="true">FORERO</span>
+  </h1>
+  <div class="rule"></div>
+  <div class="hero-row">
+    <div class="intro">
+      <p>I love computer graphics: how geometry, light and a lot of linear algebra turn into an image. I learn it by building every piece from the ground up, and I enjoy teaching what I figure out along the way.</p>
+      <span style="color:var(--accent-ink);font-weight:500">Computer Science @ UCLA · Class of 2030</span>
+    </div>
+    <div class="meta">
+      <span class="muted">LOS ANGELES, CA</span>
+      <span class="status"><span class="dot"></span>OPEN TO INTERNSHIPS</span>
+    </div>
+  </div>
+</header>
+
+<section id="live" class="live">
+  <div class="shead">
+    <div class="t">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f07a1a" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 21.5 20h-19z"/></svg>
+      <h2>Live renderer</h2>
+    </div>
+    <span class="faint-label" style="color:var(--muted)">NO WEBGL · NO GPU · YOUR CPU</span>
+  </div>
+
+  <div class="viewport">
+    <canvas id="raster" width="384" height="216" aria-label="A torus knot over a checkered floor, rendered live by a software rasterizer running in JavaScript. Drag to orbit the camera."></canvas>
+    <div class="hud-tl">
+      <span class="hud pass" id="hud-pass">PASS 09/10 · SHADOWS</span>
+      <span class="hud" id="hud-frame">384×216</span>
+    </div>
+    <span class="hud" id="hud-tris" style="top:12px;right:12px">TRIS</span>
+    <span class="hud" id="hud-inspect" style="bottom:12px;left:12px">HOVER TO INSPECT A PIXEL</span>
+    <span class="hud" style="bottom:12px;right:12px;color:var(--muted)">DRAG · ORBIT &#160; HOVER · LIGHT</span>
+  </div>
+
+  <div class="passes" id="passes" role="group" aria-label="Render passes"></div>
+
+  <div class="live-foot">
+    <div class="txt">
+      <p class="big" id="pass-text"></p>
+      <p class="muted">This rasterizer was built for this page in plain JavaScript. It goes through the same stages as the C++ renderer: MVP transforms, back-face culling, barycentric fill, a z-buffer, Phong lighting and shadow mapping.</p>
+    </div>
+    <div class="controls">
+      <button class="run" id="run" type="button">▶ RUN THE PIPELINE</button>
+      <div class="row-gap" id="res" role="group" aria-label="Framebuffer resolution">
+        <span class="faint-label" style="font-size:11px;letter-spacing:.1em;margin-right:4px">FRAMEBUFFER</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="projects" style="display:flex;flex-direction:column;gap:28px">
+  <div class="shead">
+    <div class="t">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f07a1a" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 21.5 20h-19z"/></svg>
+      <h2>Projects</h2>
+    </div>
+  </div>
+  <div class="grid">
+    <button type="button" class="pcard lift" data-open="proj-rasterizer" aria-haspopup="dialog">
+      <span class="thumb">
+        <img src="assets/hero-final.png" alt="" loading="lazy">
+        <span class="tag" style="left:12px;background:var(--accent);color:#111;font-weight:700">01</span>
+        <span class="tag" style="right:12px;background:var(--chip);color:var(--ink)">C++17 · SDL3</span>
+      </span>
+      <span class="body">
+        <span class="label" style="font-size:11px">FLAGSHIP · 2026</span>
+        <span class="title">Software Rasterizer</span>
+        <span class="muted" style="font-size:15px">A 3D renderer that runs entirely on the CPU, written from scratch in C++. Phong and toon shading, shadow maps, multithreading.</span>
+        <span class="stats">
+          <span><b>~150</b><small>FPS AT 160K TRIS</small></span>
+          <span><b>2</b><small>SHADOWED LIGHTS</small></span>
+          <span><b>0</b><small>GRAPHICS APIS</small></span>
+        </span>
+        <span class="label" style="letter-spacing:.08em">VIEW PROJECT →</span>
+      </span>
+    </button>
+    <div class="soon">
+      <span class="label" style="font-size:11px;display:flex;align-items:center;gap:8px"><span class="dot"></span>02 · IN PROGRESS</span>
+      <span style="font:800 24px/1.1 var(--display);letter-spacing:-0.03em">Ray Tracer</span>
+      <span class="muted" style="font-size:15px">Same goal, the other way of making an image.</span>
+    </div>
+  </div>
+</section>
+
+<section id="journey" style="display:flex;flex-direction:column;gap:28px">
+  <div class="shead">
+    <div class="t">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f07a1a" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 21.5 20h-19z"/></svg>
+      <h2>Journey</h2>
+    </div>
+  </div>
+  <div class="timeline">
+    <div class="tcard lift">
+      <span class="label">2025 — 2026</span>
+      <span class="ttl">Software Rasterizer</span>
+      <span class="where">C++17 · SDL3 · PERSONAL PROJECT</span>
+      <p>A 3D renderer built from scratch on the CPU. Started in Lua, rebuilt in C++, and documented stage by stage at hambup.me/rasterizer.</p>
+      <button class="view" type="button" data-open="proj-rasterizer" aria-haspopup="dialog">VIEW PROJECT →</button>
+    </div>
+    <div class="tcard now lift">
+      <span class="label">NOW</span>
+      <span class="ttl">Computer Science @ UCLA</span>
+      <span class="where">LOS ANGELES, CA · CLASS OF 2030</span>
+      <p>Studying computer science with a focus on graphics and rendering.</p>
+    </div>
+  </div>
+</section>
+
+<section id="contact" class="contact">
+  <h2>Let's render<br><span style="color:var(--accent)">something.</span></h2>
+  <p class="muted" style="margin:0;font-size:18px;max-width:46ch">I'm open to internships. Want to talk rendering, the pipeline, or a project? Reach out.</p>
+  <div class="ccards">
+    <a class="ccard lift" href="https://github.com/HambuP"><span class="k">GITHUB</span><span class="v">@HambuP</span></a>
+    <a class="ccard lift" href="/rasterizer/"><span class="k">DOCS</span><span class="v">hambup.me/rasterizer</span></a>
+    <div class="ccard lift"><span class="k">EMAIL</span><span class="v" style="user-select:all">forerovar.santiago07@gmail.com</span><button type="button" id="copy-email">COPY EMAIL</button></div>
+    <a class="ccard lift" href="https://www.linkedin.com/in/santiago-forero-cs"><span class="k">LINKEDIN</span><span class="v">/in/santiago-forero-cs</span></a>
+    <a class="ccard lift" href="https://www.youtube.com/@HambuPdev"><span class="k"><svg width="22" height="16" viewBox="0 0 28 20" aria-hidden="true"><rect width="28" height="20" rx="5.5" fill="#FF0000"/><path d="M11.2 5.6v8.8L18.8 10z" fill="#FFFFFF"/></svg>YOUTUBE</span><span class="v">@HambuPdev</span></a>
+  </div>
+  <a class="hello" id="hello" href="mailto:forerovar.santiago07@gmail.com"><b id="hello-text" style="font-weight:600">Say hello</b> <span>→</span></a>
+</section>
+
+<footer>
+  <span>© 2026 SANTIAGO FORERO · @HAMBUP · RENDERED ON YOUR CPU</span>
+  <a href="#top">BACK TO TOP ↑</a>
+</footer>
+</div>
+
+<dialog class="proj" id="proj-rasterizer" aria-label="Software Rasterizer">
+  <div class="proj-inner">
+    <button class="close" type="button" data-close>✕ CLOSE</button>
+    <span class="ghost-num" aria-hidden="true">01</span>
+
+    <div style="position:relative;display:flex;flex-direction:column;gap:18px;max-width:760px">
+      <span class="label">01 · FLAGSHIP · 2026</span>
+      <h3>Software Rasterizer</h3>
+      <p class="lead">A 3D renderer that runs entirely on the CPU, written from scratch in C++ to understand how 3D graphics actually work. SDL3 only opens the window and shows the finished framebuffer.</p>
+      <div class="btns">
+        <a class="obtn primary lift" href="/rasterizer/">DOCUMENTATION ↗</a>
+        <a class="obtn lift" href="/rasterizer/extras/bugs/">BUGS HALL OF FAME ↗</a>
+        <a class="obtn lift" href="/rasterizer/extras/process/">HANDWRITTEN NOTES ↗</a>
+        <a class="obtn lift" href="https://github.com/HambuP/software-rasterizer">SOURCE ON GITHUB ↗</a>
+      </div>
+    </div>
+
+    <figure style="position:relative">
+      <img src="assets/hero-final.png" alt="Two skulls in a library: Phong shading on the left, toon shading on the right, lit by two lights with shadow mapping" loading="lazy" style="width:100%;display:block;border-radius:10px">
+      <figcaption class="mono">FIG. 1 · Phong (left) and toon (right), two lights, shadow mapping. Every pixel computed on the CPU.</figcaption>
+    </figure>
+
+    <div class="split">
+      <div style="flex:1 1 300px;min-width:0;display:flex;flex-direction:column;gap:10px">
+        <span class="faint-label">WHY I BUILT THIS</span>
+        <p class="quote">“Honestly, it was pure curiosity.”</p>
+      </div>
+      <div class="muted" style="flex:1.5 1 420px;min-width:0;display:flex;flex-direction:column;gap:12px;max-width:64ch">
+        <p style="margin:0">It started in Lua with one goal: understanding how 3D graphics work. When Lua got complicated, I started over in C++ with the right tools.</p>
+        <p style="margin:0">Building the base of 3D rendering taught me how linear algebra is actually used, how to structure a project, how to fix bugs, how to optimize, and how to turn an idea into something huge. I built every part from scratch, so I can explain any part of it to anyone. That is what I love most: teaching.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <span class="faint-label">IN MOTION</span>
+      <div class="motion">
+        <figure><img src="assets/skulls.gif" alt="Skull scene rendering in real time" loading="lazy"><figcaption>Phong vs toon shading, two lights, real-time shadow mapping.</figcaption></figure>
+        <figure><img src="assets/backrooms.gif" alt="Walking through the Backrooms scene" loading="lazy"><figcaption><b style="color:var(--ink);font-weight:600">The Backrooms test.</b> A full downloaded scene of about 70K triangles, imported to prove the renderer is not tied to scenes built for it. Its lighting is baked into the textures, so it shows off geometry, texturing and clipping.</figcaption></figure>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="tabs" role="tablist" aria-label="Project details">
+        <button class="chip-btn" role="tab" aria-selected="true" aria-controls="tab-features" data-tab="tab-features">Features</button>
+        <button class="chip-btn" role="tab" aria-selected="false" aria-controls="tab-perf" data-tab="tab-perf">Performance</button>
+        <button class="chip-btn" role="tab" aria-selected="false" aria-controls="tab-run" data-tab="tab-run">Run it</button>
+        <button class="chip-btn" role="tab" aria-selected="false" aria-controls="tab-limits" data-tab="tab-limits">Limitations</button>
+      </div>
+
+      <div id="tab-features" role="tabpanel" class="fgrid">
+        <div class="fcard"><span class="label">PIPELINE</span><ul>
+          <li>Math library from scratch: Vec2, Vec3, Vec4, Mat4</li>
+          <li>Full Model · View · Projection, every matrix derived on paper first</li>
+          <li>Near-plane triangle clipping, frustum rejection, back-face culling</li>
+          <li>Barycentric rasterization with perspective-correct interpolation</li>
+          <li>Per-pixel z-buffer</li></ul></div>
+        <div class="fcard"><span class="label">LIGHTING AND SHADING</span><ul>
+          <li>Per-pixel Phong: ambient, diffuse, specular</li>
+          <li>Toon shading with banded light and outlines, switchable per object</li>
+          <li>Directional light and spotlight with cone and attenuation</li>
+          <li>Shadow maps: orthographic for the directional light, perspective for the spotlight</li>
+          <li>Bias against shadow acne; shadow maps re-render only when a light changes</li></ul></div>
+        <div class="fcard"><span class="label">ASSETS</span><ul>
+          <li>OBJ parser with MTL materials</li>
+          <li>Quads and n-gons split into triangles</li>
+          <li>BMP decoder written from scratch, 24-bit and 32-bit</li></ul></div>
+        <div class="fcard"><span class="label">PERFORMANCE AND INTERACTION</span><ul>
+          <li>Multithreaded: the screen and the shadow maps split into bands of rows, one per CPU core</li>
+          <li>First-person camera: WASD and mouse look</li></ul></div>
+      </div>
+
+      <div id="tab-perf" role="tabpanel" hidden style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <span class="mono muted" style="font-size:12px;letter-spacing:.06em">RELEASE BUILD · 800×600 · APPLE M5</span>
+          <div class="row-gap" role="group" aria-label="Sort scenes">
+            <span class="faint-label" style="font-size:11px;letter-spacing:.1em;margin-right:4px">SORT</span>
+            <button class="chip-btn" type="button" data-sort="fps" aria-pressed="true">FPS</button>
+            <button class="chip-btn" type="button" data-sort="tris" aria-pressed="false">Triangles</button>
+          </div>
+        </div>
+        <div id="perf-rows" style="display:flex;flex-direction:column;gap:14px"></div>
+        <p class="note">Going from 22 triangles to 160K only drops from ~200 to ~150 FPS. Most of the frame goes to shading every pixel on screen, not to the number of triangles.</p>
+      </div>
+
+      <div id="tab-run" role="tabpanel" hidden style="display:flex;flex-wrap:wrap;gap:28px">
+        <div style="flex:1.4 1 420px;min-width:0;display:flex;flex-direction:column;gap:12px">
+          <p class="muted" style="margin:0">You need CMake 3.24+ and a C++17 compiler. CMake downloads and builds SDL3 for you the first time. Build in Release: Debug runs several times slower.</p>
+          <div class="code"><button type="button" id="copy-build">COPY</button><pre id="build-cmd">git clone https://github.com/HambuP/software-rasterizer.git
+cd software-rasterizer
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release</pre></div>
+          <pre class="run-cmd"># run from the repo root so it finds obj/
+./build/Rasterizer              # Linux / macOS
+build\Rasterizer.exe            # Windows (MinGW)
+build\Release\Rasterizer.exe    # Windows (Visual Studio)</pre>
+          <p class="muted" style="margin:0;font-size:14px">Tested with MinGW GCC 15.2 on Windows and GCC 13 on Linux. On Linux, SDL3 needs your X11/Wayland development packages. The code comments are in Spanish, my first language; the documentation is in English.</p>
+        </div>
+        <div style="flex:1 1 240px;min-width:0;display:flex;flex-direction:column;gap:10px">
+          <span class="faint-label">CONTROLS</span>
+          <div class="keys">
+            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>Move</span>
+            <span><kbd>MOUSE</kbd></span><span>Look around</span>
+            <span><kbd>ALT</kbd><kbd>F4</kbd></span><span>Quit</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-limits" role="tabpanel" hidden class="fgrid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px">
+        <div class="lim"><b>Textures must be BMP</b><span>24- or 32-bit. Convert PNG or JPG textures first.</span></div>
+        <div class="lim"><b>OBJ faces need f v/vt/vn</b><span>Models without UVs or normals will not load.</span></div>
+        <div class="lim"><b>The scene lives in main.cpp</b><span>No scene file or menu yet: loading another model means editing the code and recompiling.</span></div>
+        <div class="lim"><b>Fixed 800×600 window</b><span>The framebuffer size is fixed for now.</span></div>
+        <div class="lim"><b>Screenshot models are not in the repo</b><span>Running it opens the default scene: a grass block on a wooden floor in front of a library wall, lit by two lights with shadows.</span></div>
+      </div>
+    </div>
+
+    <div class="sub">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:14px">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f07a1a" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 21.5 20h-19z"/><path d="M12 9.5v4.5M12 16.8v.2" stroke-linecap="round"/></svg>
+            <h4>Bugs Hall of Fame</h4>
+          </div>
+          <p class="muted" style="margin:0;max-width:60ch">Everything that broke along the way. Each one taught me how a stage actually works.</p>
+        </div>
+        <a href="/rasterizer/extras/bugs/" class="mono" style="font-size:12px;letter-spacing:.1em;font-weight:700">EVERY BUG AND WHY IT BROKE ↗</a>
+      </div>
+      <div class="bugs">
+        <a class="bug lift" href="/rasterizer/extras/bugs/"><img src="assets/bug-backfaces.gif" alt="A cube with its back faces drawn over its front faces" loading="lazy"><div><span class="label" style="font-size:11px">CULLING</span><b>Back faces showing through</b></div></a>
+        <a class="bug lift" href="/rasterizer/extras/bugs/"><img src="assets/bug-noclear.gif" alt="A spinning cube smearing across the frame because the framebuffer was never cleared" loading="lazy"><div><span class="label" style="font-size:11px">FRAMEBUFFER</span><b>Forgot to clear the screen</b></div></a>
+        <a class="bug lift" href="/rasterizer/extras/bugs/"><img src="assets/bug-acne.gif" alt="Striped self-shadowing artifacts across a lit surface" loading="lazy"><div><span class="label" style="font-size:11px">SHADOWS</span><b>Shadow acne</b></div></a>
+        <a class="bug lift" href="/rasterizer/extras/bugs/"><img src="assets/bug-devil.gif" alt="A shadow-mapping bug producing a strange shadow shape" loading="lazy"><div><span class="label" style="font-size:11px">SHADOWS</span><b>The devil shadow</b></div></a>
+        <a class="bug lift" href="/rasterizer/extras/bugs/"><img src="assets/bug-texture.gif" alt="A texture mapped incorrectly onto a model" loading="lazy"><div><span class="label" style="font-size:11px">TEXTURES</span><b>Broken textures</b></div></a>
+      </div>
+    </div>
+
+    <div class="sub">
+      <div style="display:flex;align-items:center;gap:14px">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f07a1a" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 21.5 20h-19z"/></svg>
+        <h4>Project timeline</h4>
+      </div>
+      <div class="timeline">
+        <div class="tcard"><span class="label">2025</span><span class="ttl">Started in Lua</span><span class="where">LÖVE2D</span><p>One goal: understanding how 3D graphics work. A first rasterizer with projection, a z-buffer and an FPS camera.</p></div>
+        <div class="tcard"><span class="label">2026</span><span class="ttl">Started over in C++</span><span class="where">C++17 · SDL3 · CMAKE</span><p>Moved to a proper environment and rebuilt the whole pipeline from scratch: math library, MVP, clipping, Phong and toon shading, two kinds of shadow maps, multithreading.</p></div>
+        <div class="tcard"><span class="label">2026</span><span class="ttl">Wrote it all down</span><span class="where">HAMBUP.ME/RASTERIZER</span><p>Every stage of the pipeline explained from the first pixel to shadow mapping, with interactive visualizations, handwritten notes and the Bugs Hall of Fame.</p></div>
+        <div class="tcard now"><span class="label">NEXT</span><span class="ttl">A ray tracer</span><span class="where">IN PROGRESS</span><p>Same goal, the other way of making an image.</p></div>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<div class="progress" id="progress" aria-hidden="true"></div>
+
+<script>
+(function () {
+  'use strict';
+  var root = document.documentElement;
+  var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------- Theme ----------
+  function isDark() {
+    var t = root.getAttribute('data-theme');
+    if (t) return t === 'dark';
+    return !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  }
+  var themeBtn = document.getElementById('theme-toggle');
+  function syncThemeLabel() { themeBtn.setAttribute('aria-label', isDark() ? 'Switch to light mode' : 'Switch to dark mode'); }
+  themeBtn.addEventListener('click', function () {
+    var next = isDark() ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    syncThemeLabel();
+  });
+  syncThemeLabel();
+
+  // ---------- Name letters ----------
+  function letters(id, start) {
+    var el = document.getElementById(id), word = el.textContent; el.textContent = '';
+    word.split('').forEach(function (ch, i) {
+      var s = document.createElement('span'); s.className = 'ltr'; s.textContent = ch;
+      s.style.animationDelay = (start + i * 0.05).toFixed(2) + 's'; el.appendChild(s);
+    });
+    return el;
+  }
+  letters('name-a', 0.05);
+  var nb = letters('name-b', 0.45);
+  var dot = document.createElement('span'); dot.className = 'ltr'; dot.textContent = '.'; dot.style.color = '#f07a1a'; dot.style.animationDelay = '1.1s'; nb.appendChild(dot);
+
+  // ---------- Clipboard ----------
+  function copy(text, btn, done, idle) {
+    function ok() { btn.textContent = done; setTimeout(function () { btn.textContent = idle; }, 1600); }
+    try { navigator.clipboard.writeText(text).then(ok, function () {}); } catch (e) {}
+  }
+  var EMAIL = 'forerovar.santiago07@gmail.com';
+  var ce = document.getElementById('copy-email');
+  ce.addEventListener('click', function () { copy(EMAIL, ce, 'COPIED', 'COPY EMAIL'); });
+  var helloText = document.getElementById('hello-text');
+  document.getElementById('hello').addEventListener('click', function () { copy(EMAIL, helloText, 'Email copied', 'Say hello'); });
+  var cb = document.getElementById('copy-build');
+  cb.addEventListener('click', function () { copy(document.getElementById('build-cmd').textContent, cb, 'COPIED', 'COPY'); });
+
+  // ---------- Scroll progress ----------
+  var bar = document.getElementById('progress');
+  function onScroll() {
+    var max = (root.scrollHeight - window.innerHeight) || 1;
+    bar.style.width = Math.max(0, Math.min(100, window.scrollY / max * 100)) + '%';
+  }
+  window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+  // ---------- Project dialog ----------
+  document.querySelectorAll('[data-open]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var d = document.getElementById(b.getAttribute('data-open'));
+      if (d && d.showModal) { d.showModal(); document.body.style.overflow = 'hidden'; }
+    });
+  });
+  document.querySelectorAll('dialog.proj').forEach(function (d) {
+    d.addEventListener('close', function () { document.body.style.overflow = ''; });
+    d.addEventListener('click', function (e) { if (e.target === d) d.close(); });
+    d.querySelectorAll('[data-close]').forEach(function (c) { c.addEventListener('click', function () { d.close(); }); });
+  });
+
+  // ---------- Tabs ----------
+  var tabs = document.querySelectorAll('[role="tab"]');
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () {
+      tabs.forEach(function (o) {
+        var on = o === t; o.setAttribute('aria-selected', String(on));
+        document.getElementById(o.getAttribute('data-tab')).hidden = !on;
+      });
+    });
+  });
+
+  // ---------- Performance chart ----------
+  var perf = [
+    { name: 'Jeep model', tris: '~5K', n: 5000, fps: 400 },
+    { name: 'Default scene (in the repo), 2 lights with shadows', tris: '22', n: 22, fps: 200 },
+    { name: 'Two skulls + room, 2 lights with shadows', tris: '~160K', n: 160000, fps: 150 },
+    { name: 'Backrooms', tris: '~70K', n: 70000, fps: 100 }
+  ];
+  var perfRows = document.getElementById('perf-rows');
+  perf.forEach(function (r) {
+    var row = document.createElement('div'); row.className = 'perf-row';
+    row.innerHTML = '<div class="perf-top"><span style="font-weight:500"></span><span class="mono muted" style="font-variant-numeric:tabular-nums"></span></div>' +
+      '<div class="perf-bar"><div class="track"><div class="fill"></div></div><span class="mono" style="width:72px;font-weight:700;font-variant-numeric:tabular-nums"></span></div>';
+    row.querySelector('.perf-top span').textContent = r.name;
+    row.querySelector('.perf-top .mono').textContent = r.tris + ' tris';
+    row.querySelector('.fill').style.width = (r.fps / 400 * 100) + '%';
+    row.querySelector('.perf-bar .mono').textContent = '~' + r.fps + ' FPS';
+    r.el = row;
+  });
+  function sortPerf(by) {
+    perf.slice().sort(function (a, b) { return by === 'fps' ? b.fps - a.fps : b.n - a.n; }).forEach(function (r) { perfRows.appendChild(r.el); });
+    document.querySelectorAll('[data-sort]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-sort') === by)); });
+  }
+  document.querySelectorAll('[data-sort]').forEach(function (b) { b.addEventListener('click', function () { sortPerf(b.getAttribute('data-sort')); }); });
+  sortPerf('fps');
+
+  // ---------- Live software rasterizer ----------
+  var cv = document.getElementById('raster'), ctx = cv.getContext('2d');
+  var passData = [
+    ['points', 'Vertices', 'Every vertex goes through the model, view and projection matrices and lands on the screen. Nothing is filled yet.'],
+    ['wire', 'Wireframe', 'Edges between projected vertices, drawn with Bresenham lines.'],
+    ['cull', 'Culling', 'Triangles facing away from the camera are thrown out before they cost a single pixel. Orange survives; grey is culled.'],
+    ['bary', 'Rasterize', 'Each covered pixel gets three barycentric weights, shown here as red, green and blue.'],
+    ['depth', 'Z-buffer', 'The z-buffer keeps the nearest surface per pixel and shades by distance.'],
+    ['normals', 'Normals', 'Vertex normals interpolated with perspective correction, shown as RGB.'],
+    ['phong', 'Phong', 'Per-pixel diffuse and Blinn-Phong specular from a directional light. Hover the frame to move it.'],
+    ['smap', 'Shadow map', 'The scene from the light, depth only: a 256×256 orthographic shadow map.'],
+    ['shadows', 'Shadows', 'Each pixel is moved into light space and tested against the shadow map, with adaptive bias and 2×2 filtering.'],
+    ['toon', 'Toon', 'Lighting quantized into three bands, with outlines found from depth discontinuities.']
+  ];
+  var S = { pass: 'shadows', yaw: 0.55, pitch: 0.3, lightAz: -0.8, lightEl: 0.95, time: 0, hover: null, drag: null, timer: null };
+  var hud = { ms: 0, fps: 60, drawn: 0, culled: 0, pixels: 0, insp: '' };
+
+  // Pass buttons
+  var passWrap = document.getElementById('passes'), passBtns = [];
+  passData.forEach(function (p, i) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'passbtn';
+    b.innerHTML = '<span class="n">' + String(i + 1).padStart(2, '0') + '</span><span class="l"></span>';
+    b.querySelector('.l').textContent = p[1];
+    b.addEventListener('click', function () { stopRun(); setPass(p[0]); });
+    passWrap.appendChild(b); passBtns.push(b);
+  });
+  var hudPass = document.getElementById('hud-pass'), passText = document.getElementById('pass-text');
+  function setPass(id) {
+    S.pass = id;
+    var idx = passData.findIndex(function (p) { return p[0] === id; });
+    passBtns.forEach(function (b, i) { b.setAttribute('aria-pressed', String(i === idx)); });
+    hudPass.textContent = 'PASS ' + String(idx + 1).padStart(2, '0') + '/10 · ' + passData[idx][1].toUpperCase();
+    passText.textContent = passData[idx][2];
+  }
+  setPass('shadows');
+
+  // Run the pipeline
+  var runBtn = document.getElementById('run');
+  function stopRun() { if (S.timer) { clearInterval(S.timer); S.timer = null; } runBtn.textContent = '▶ RUN THE PIPELINE'; }
+  runBtn.addEventListener('click', function () {
+    if (S.timer) { stopRun(); return; }
+    var i = 0; setPass(passData[0][0]); runBtn.textContent = '■ STOP';
+    S.timer = setInterval(function () {
+      i++;
+      if (i >= passData.length) { stopRun(); setPass('shadows'); return; }
+      setPass(passData[i][0]);
+    }, 1600);
+  });
+
+  // Resolution
+  var resWrap = document.getElementById('res'), resBtns = [];
+  [256, 384, 640].forEach(function (w) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'chip-btn';
+    b.textContent = w + '×' + Math.round(w * 9 / 16);
+    b.addEventListener('click', function () { cv.width = w; cv.height = Math.round(w * 9 / 16); resBtns.forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)); }); });
+    b.setAttribute('aria-pressed', String(w === 384));
+    resWrap.appendChild(b); resBtns.push(b);
+  });
+
+  // Pointer: drag to orbit, hover to move the light and inspect
+  cv.addEventListener('pointerdown', function (e) { S.drag = { x: e.clientX, y: e.clientY, yaw: S.yaw, pitch: S.pitch }; try { cv.setPointerCapture(e.pointerId); } catch (err) {} });
+  cv.addEventListener('pointermove', function (e) {
+    var r = cv.getBoundingClientRect(), u = (e.clientX - r.left) / r.width, v = (e.clientY - r.top) / r.height;
+    S.hover = { x: Math.floor(u * cv.width), y: Math.floor(v * cv.height) };
+    if (S.drag) {
+      S.yaw = S.drag.yaw - (e.clientX - S.drag.x) * 0.008;
+      S.pitch = Math.max(0.06, Math.min(1.25, S.drag.pitch + (e.clientY - S.drag.y) * 0.006));
+    } else {
+      S.lightAz = (u - 0.5) * 3.4 + S.yaw - 0.55;
+      S.lightEl = 0.3 + (1 - v) * 1.0;
+    }
+  });
+  cv.addEventListener('pointerup', function () { S.drag = null; });
+  cv.addEventListener('pointerleave', function () { S.hover = null; S.drag = null; });
+
+  // Mesh: torus knot + floor grid
+  var M = (function build() {
+    function cross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+    function norm(a) { var l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; }
+    var U = 180, V = 14, p = 2, q = 3, s = 0.6, tube = 0.27;
+    function cur(t) { var r = 2 + Math.cos(q * t); return [r * Math.cos(p * t) * s, r * Math.sin(p * t) * s, Math.sin(q * t) * s]; }
+    var P = [], N = [], T = [], O = [], i, j;
+    for (i = 0; i < U; i++) {
+      var t = i / U * Math.PI * 2, a = cur(t), b = cur(t + 0.01);
+      var tg = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], nn = [b[0] + a[0], b[1] + a[1], b[2] + a[2]];
+      var bn = cross(tg, nn), nr = norm(cross(bn, tg)), bb = norm(bn);
+      for (j = 0; j < V; j++) {
+        var vv = j / V * Math.PI * 2, cx = -tube * Math.cos(vv), cy = tube * Math.sin(vv);
+        var nx = cx * nr[0] + cy * bb[0], ny = cx * nr[1] + cy * bb[1], nz = cx * nr[2] + cy * bb[2], l = Math.hypot(nx, ny, nz);
+        P.push(a[0] + nx, a[1] + ny, a[2] + nz); N.push(nx / l, ny / l, nz / l);
+      }
+    }
+    for (i = 0; i < U; i++) for (j = 0; j < V; j++) {
+      var A = i * V + j, B = ((i + 1) % U) * V + j, C = ((i + 1) % U) * V + (j + 1) % V, D = i * V + (j + 1) % V;
+      T.push(A, B, D, B, C, D); O.push(0, 0);
+    }
+    var nKnotV = U * V, nKnotT = O.length;
+    var G = 12, E = 4.4, FY = -2.2, base = P.length / 3, gx, gy;
+    for (gy = 0; gy <= G; gy++) for (gx = 0; gx <= G; gx++) { P.push(-E + 2 * E * gx / G, FY, -E + 2 * E * gy / G); N.push(0, 1, 0); }
+    for (gy = 0; gy < G; gy++) for (gx = 0; gx < G; gx++) {
+      var a2 = base + gy * (G + 1) + gx, b2 = a2 + 1, c2 = a2 + G + 2, d2 = a2 + G + 1;
+      T.push(a2, b2, c2, a2, c2, d2); O.push(1, 1);
+    }
+    var nV = P.length / 3, nT = T.length / 3;
+    // Line passes have no depth test, so draw the floor first and the knot over it.
+    var order = new Int32Array(nT), k = 0, tt;
+    for (tt = nKnotT; tt < nT; tt++) order[k++] = tt;
+    for (tt = 0; tt < nKnotT; tt++) order[k++] = tt;
+    return {
+      P: new Float32Array(P), N: new Float32Array(N), T: new Int32Array(T), O: new Uint8Array(O), order: order,
+      nV: nV, nT: nT, nKnotV: nKnotV,
+      WP: new Float32Array(nV * 3), WN: new Float32Array(nV * 3),
+      SX: new Float32Array(nV), SY: new Float32Array(nV), SZ: new Float32Array(nV),
+      LX: new Float32Array(nV), LY: new Float32Array(nV), LZ: new Float32Array(nV),
+      SMS: 256, sm: new Float32Array(256 * 256)
+    };
+  })();
+
+  function line(px, W, H, x0, y0, x1, y1, r, g, b) {
+    x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
+    if ((x0 < 0 && x1 < 0) || (y0 < 0 && y1 < 0) || (x0 >= W && x1 >= W) || (y0 >= H && y1 >= H)) return;
+    var dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1, err = dx + dy, n = 0;
+    while (n++ < 4000) {
+      if (x0 >= 0 && y0 >= 0 && x0 < W && y0 < H) { var o = (y0 * W + x0) * 4; px[o] = r; px[o + 1] = g; px[o + 2] = b; }
+      if (x0 === x1 && y0 === y1) break;
+      var e2 = 2 * err;
+      if (e2 >= dy) { err += dy; x0 += sx; }
+      if (e2 <= dx) { err += dx; y0 += sy; }
+    }
+  }
+
+  var img = null, zb = null, ib = null, bgRow = null, bgDark = null;
+  function renderScene() {
+    var W = cv.width, H = cv.height, n = W * H, dark = isDark();
+    if (!img || img.width !== W || img.height !== H) { img = ctx.createImageData(W, H); zb = new Float32Array(n); ib = new Int32Array(n); bgDark = null; }
+    if (bgDark !== dark) { bgDark = dark; bgRow = new Uint8Array(H); for (var yy = 0; yy < H; yy++) bgRow[yy] = Math.round(dark ? 24 - 14 * yy / H : 240 - 18 * yy / H); }
+    var px = img.data, mode = S.pass;
+    var nV = M.nV, nT = M.nT, Pm = M.P, Nm = M.N, tris = M.T, tobj = M.O, order = M.order;
+    var WP = M.WP, WN = M.WN, SX = M.SX, SY = M.SY, SZ = M.SZ, v, k, t;
+
+    var a = S.time * 0.00042, b = 0.22 * Math.sin(S.time * 0.00031);
+    var ca = Math.cos(a), sa = Math.sin(a), cb = Math.cos(b), sb = Math.sin(b);
+    for (v = 0; v < nV; v++) {
+      k = v * 3;
+      if (v < M.nKnotV) {
+        var x = Pm[k], y = Pm[k + 1], z = Pm[k + 2], x1 = x * ca + z * sa, z1 = -x * sa + z * ca;
+        WP[k] = x1; WP[k + 1] = y * cb - z1 * sb + 0.2; WP[k + 2] = y * sb + z1 * cb;
+        x = Nm[k]; y = Nm[k + 1]; z = Nm[k + 2]; x1 = x * ca + z * sa; z1 = -x * sa + z * ca;
+        WN[k] = x1; WN[k + 1] = y * cb - z1 * sb; WN[k + 2] = y * sb + z1 * cb;
+      } else {
+        WP[k] = Pm[k]; WP[k + 1] = Pm[k + 1]; WP[k + 2] = Pm[k + 2]; WN[k] = 0; WN[k + 1] = 1; WN[k + 2] = 0;
+      }
+    }
+
+    var D = 9.2, ty = -0.1, cp = Math.cos(S.pitch);
+    var ex = D * cp * Math.sin(S.yaw), ey = ty + D * Math.sin(S.pitch), ez = D * cp * Math.cos(S.yaw);
+    var fx = -ex, fy = ty - ey, fz = -ez, l = Math.hypot(fx, fy, fz); fx /= l; fy /= l; fz /= l;
+    var rx = -fz, rz = fx; l = Math.hypot(rx, rz); rx /= l; rz /= l;
+    var ux = -rz * fy, uy = rz * fx - rx * fz, uz = rx * fy;
+    var F = 1 / Math.tan(19 * Math.PI / 180), aspect = W / H;
+    for (v = 0; v < nV; v++) {
+      k = v * 3; var dx = WP[k] - ex, dy = WP[k + 1] - ey, dz = WP[k + 2] - ez;
+      var vx = dx * rx + dz * rz, vy = dx * ux + dy * uy + dz * uz, vz = dx * fx + dy * fy + dz * fz;
+      SZ[v] = vz; SX[v] = (vx / vz * F / aspect * 0.5 + 0.5) * W; SY[v] = (-vy / vz * F * 0.5 + 0.5) * H;
+    }
+
+    var ce = Math.cos(S.lightEl), Lx = ce * Math.sin(S.lightAz), Ly = Math.sin(S.lightEl), Lz = ce * Math.cos(S.lightAz);
+    var lfx = -Lx, lfy = -Ly, lfz = -Lz, lrx = -lfz, lrz = lfx; l = Math.hypot(lrx, lrz) || 1; lrx /= l; lrz /= l;
+    var lux = -lrz * lfy, luy = lrz * lfx - lrx * lfz, luz = lrx * lfy;
+    var SS = M.SMS, ext = 5.4, sm = M.sm, lzMin = Infinity, lzMax = -Infinity;
+    var ia, ib2, ic, ax, ay, bx, by, cx, cy, area, x0, x1b, y0, y1, px0, py0, w0, w1, w2, zz, i;
+    if (mode === 'shadows' || mode === 'toon' || mode === 'smap') {
+      var LX = M.LX, LY = M.LY, LZ = M.LZ;
+      for (v = 0; v < nV; v++) {
+        k = v * 3; var X = WP[k], Y = WP[k + 1], Z = WP[k + 2];
+        LX[v] = ((X * lrx + Z * lrz) / ext * 0.5 + 0.5) * SS;
+        LY[v] = (-(X * lux + Y * luy + Z * luz) / ext * 0.5 + 0.5) * SS;
+        LZ[v] = X * lfx + Y * lfy + Z * lfz;
+      }
+      sm.fill(Infinity);
+      for (t = 0; t < nT; t++) {
+        ia = tris[t * 3]; ib2 = tris[t * 3 + 1]; ic = tris[t * 3 + 2];
+        ax = LX[ia]; ay = LY[ia]; bx = LX[ib2]; by = LY[ib2]; cx = LX[ic]; cy = LY[ic];
+        area = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+        if (Math.abs(area) < 1e-9) continue;
+        var za = LZ[ia], zb2 = LZ[ib2], zc = LZ[ic];
+        x0 = Math.max(0, Math.floor(Math.min(ax, bx, cx))); x1b = Math.min(SS - 1, Math.ceil(Math.max(ax, bx, cx)));
+        y0 = Math.max(0, Math.floor(Math.min(ay, by, cy))); y1 = Math.min(SS - 1, Math.ceil(Math.max(ay, by, cy)));
+        for (var sy = y0; sy <= y1; sy++) for (var sx = x0; sx <= x1b; sx++) {
+          px0 = sx + 0.5; py0 = sy + 0.5;
+          w0 = ((cx - bx) * (py0 - by) - (cy - by) * (px0 - bx)) / area;
+          w1 = ((ax - cx) * (py0 - cy) - (ay - cy) * (px0 - cx)) / area;
+          w2 = 1 - w0 - w1;
+          if (w0 < 0 || w1 < 0 || w2 < 0) continue;
+          zz = w0 * za + w1 * zb2 + w2 * zc; i = sy * SS + sx;
+          if (zz < sm[i]) { sm[i] = zz; if (zz < lzMin) lzMin = zz; if (zz > lzMax) lzMax = zz; }
+        }
+      }
+    }
+
+    for (var yc = 0; yc < H; yc++) { var g0 = bgRow[yc]; for (var xc = 0; xc < W; xc++) { i = yc * W + xc; var oo = i * 4; px[oo] = g0; px[oo + 1] = g0; px[oo + 2] = g0; px[oo + 3] = 255; zb[i] = Infinity; ib[i] = -1; } }
+
+    var drawn = 0, culled = 0, pixels = 0;
+    function facing(t) {
+      var A = tris[t * 3] * 3, B = tris[t * 3 + 1] * 3, C = tris[t * 3 + 2] * 3;
+      var nx = WN[A] + WN[B] + WN[C], ny = WN[A + 1] + WN[B + 1] + WN[C + 1], nz = WN[A + 2] + WN[B + 2] + WN[C + 2];
+      return nx * (ex - WP[A]) + ny * (ey - WP[A + 1]) + nz * (ez - WP[A + 2]) > 0;
+    }
+
+    if (mode === 'points') {
+      for (v = 0; v < nV; v++) {
+        if (SZ[v] < 0.2) continue;
+        var qx = SX[v] | 0, qy = SY[v] | 0;
+        if (qx < 0 || qy < 0 || qx >= W || qy >= H) continue;
+        var o = (qy * W + qx) * 4, kk = Math.max(0, Math.min(1, (SZ[v] - 7) / 5));
+        if (v < M.nKnotV) { px[o] = 240 - 60 * kk; px[o + 1] = 110 - 40 * kk; px[o + 2] = 20; } else { px[o] = 110; px[o + 1] = 110; px[o + 2] = 110; }
+        pixels++;
+      }
+      drawn = nT;
+    } else if (mode === 'wire' || mode === 'cull') {
+      for (var pass = 0; pass < 2; pass++) for (var oi = 0; oi < nT; oi++) {
+        t = order[oi]; ia = tris[t * 3]; ib2 = tris[t * 3 + 1]; ic = tris[t * 3 + 2];
+        if (SZ[ia] < 0.2 || SZ[ib2] < 0.2 || SZ[ic] < 0.2) continue;
+        var front = facing(t), knot = tobj[t] === 0, r, g, bl;
+        if (mode === 'cull') {
+          if (pass === 0 && front) continue; if (pass === 1 && !front) continue;
+          if (front) { drawn++; r = knot ? 240 : 120; g = knot ? 110 : 120; bl = knot ? 20 : 120; }
+          else { culled++; r = g = bl = dark ? 58 : 208; }
+        } else {
+          if (pass === 1) continue;
+          drawn++; r = g = bl = knot ? (dark ? 228 : 34) : (dark ? 78 : 160);
+        }
+        line(px, W, H, SX[ia], SY[ia], SX[ib2], SY[ib2], r, g, bl);
+        line(px, W, H, SX[ib2], SY[ib2], SX[ic], SY[ic], r, g, bl);
+        line(px, W, H, SX[ic], SY[ic], SX[ia], SY[ia], r, g, bl);
+      }
+    } else if (mode === 'smap') {
+      var side = H, ox = ((W - side) / 2) | 0, span = (lzMax - lzMin) || 1;
+      for (var my = 0; my < H; my++) for (var mx = 0; mx < side; mx++) {
+        var d = sm[((my / H * SS) | 0) * SS + ((mx / side * SS) | 0)], o2 = (my * W + mx + ox) * 4;
+        if (d !== Infinity) { var gg = 25 + 205 * (d - lzMin) / span; px[o2] = gg; px[o2 + 1] = gg; px[o2 + 2] = gg; pixels++; }
+        else { var ge = dark ? 6 : 250; px[o2] = ge; px[o2 + 1] = ge; px[o2 + 2] = ge; }
+      }
+      line(px, W, H, ox - 1, 0, ox - 1, H - 1, 240, 122, 26);
+      line(px, W, H, ox + side, 0, ox + side, H - 1, 240, 122, 26);
+      drawn = nT;
+    } else {
+      var MM = mode === 'bary' ? 0 : mode === 'depth' ? 1 : mode === 'normals' ? 2 : mode === 'phong' ? 3 : mode === 'shadows' ? 4 : 5;
+      var useShadow = MM >= 4, chkA = dark ? 0.24 : 0.93, chkB = dark ? 0.15 : 0.8;
+      for (t = 0; t < nT; t++) {
+        if (!facing(t)) { culled++; continue; }
+        ia = tris[t * 3]; ib2 = tris[t * 3 + 1]; ic = tris[t * 3 + 2];
+        var zA = SZ[ia], zB = SZ[ib2], zC = SZ[ic];
+        if (zA < 0.2 || zB < 0.2 || zC < 0.2) continue;
+        ax = SX[ia]; ay = SY[ia]; bx = SX[ib2]; by = SY[ib2]; cx = SX[ic]; cy = SY[ic];
+        area = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+        if (Math.abs(area) < 1e-9) continue;
+        x0 = Math.max(0, Math.floor(Math.min(ax, bx, cx))); x1b = Math.min(W - 1, Math.ceil(Math.max(ax, bx, cx)));
+        y0 = Math.max(0, Math.floor(Math.min(ay, by, cy))); y1 = Math.min(H - 1, Math.ceil(Math.max(ay, by, cy)));
+        if (x0 > x1b || y0 > y1) continue;
+        drawn++;
+        var iza = 1 / zA, izb = 1 / zB, izc = 1 / zC, isKnot = tobj[t] === 0, ka = ia * 3, kb = ib2 * 3, kc = ic * 3;
+        for (var py = y0; py <= y1; py++) for (var pxx = x0; pxx <= x1b; pxx++) {
+          px0 = pxx + 0.5; py0 = py + 0.5;
+          w0 = ((cx - bx) * (py0 - by) - (cy - by) * (px0 - bx)) / area;
+          w1 = ((ax - cx) * (py0 - cy) - (ay - cy) * (px0 - cx)) / area;
+          w2 = 1 - w0 - w1;
+          if (w0 < 0 || w1 < 0 || w2 < 0) continue;
+          var iz = w0 * iza + w1 * izb + w2 * izc, zv = 1 / iz, idx = py * W + pxx;
+          if (zv >= zb[idx]) continue;
+          zb[idx] = zv; ib[idx] = t; pixels++;
+          var op = idx * 4;
+          if (MM === 0) { px[op] = 255 * w0; px[op + 1] = 255 * w1; px[op + 2] = 255 * w2; continue; }
+          if (MM === 1) { var dd = Math.max(0, Math.min(1, (zv - 6) / 7)), gd = dark ? 235 - 205 * dd : 20 + 215 * dd; px[op] = gd; px[op + 1] = gd; px[op + 2] = gd; continue; }
+          var q0 = w0 * iza * zv, q1 = w1 * izb * zv, q2 = w2 * izc * zv;
+          var nx = q0 * WN[ka] + q1 * WN[kb] + q2 * WN[kc], ny = q0 * WN[ka + 1] + q1 * WN[kb + 1] + q2 * WN[kc + 1], nz = q0 * WN[ka + 2] + q1 * WN[kb + 2] + q2 * WN[kc + 2];
+          var nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+          if (MM === 2) { px[op] = (nx * 0.5 + 0.5) * 255; px[op + 1] = (ny * 0.5 + 0.5) * 255; px[op + 2] = (nz * 0.5 + 0.5) * 255; continue; }
+          var Px = q0 * WP[ka] + q1 * WP[kb] + q2 * WP[kc], Py = q0 * WP[ka + 1] + q1 * WP[kb + 1] + q2 * WP[kc + 1], Pz = q0 * WP[ka + 2] + q1 * WP[kb + 2] + q2 * WP[kc + 2];
+          var ndl = nx * Lx + ny * Ly + nz * Lz, diff = ndl > 0 ? ndl : 0, sh = 1;
+          if (useShadow) {
+            if (diff <= 0) sh = 0;
+            else {
+              var ssx = ((Px * lrx + Pz * lrz) / ext * 0.5 + 0.5) * SS - 0.5;
+              var ssy = (-(Px * lux + Py * luy + Pz * luz) / ext * 0.5 + 0.5) * SS - 0.5;
+              var lz = Px * lfx + Py * lfy + Pz * lfz - (0.05 + 0.16 * (1 - diff));
+              var sx0 = Math.floor(ssx), sy0 = Math.floor(ssy), lit = 0;
+              for (var jj = 0; jj < 2; jj++) for (var ii = 0; ii < 2; ii++) {
+                var XX = sx0 + ii, YY = sy0 + jj;
+                if (XX < 0 || YY < 0 || XX >= SS || YY >= SS || lz <= sm[YY * SS + XX]) lit++;
+              }
+              sh = lit / 4;
+            }
+          }
+          var vx2 = ex - Px, vy2 = ey - Py, vz2 = ez - Pz, vl = Math.hypot(vx2, vy2, vz2); vx2 /= vl; vy2 /= vl; vz2 /= vl;
+          var hx = Lx + vx2, hy = Ly + vy2, hz = Lz + vz2, hl = Math.hypot(hx, hy, hz) || 1; hx /= hl; hy /= hl; hz /= hl;
+          var nh = Math.max(0, nx * hx + ny * hy + nz * hz), ar, ag, ab, ks, cr, cg, cbl;
+          if (isKnot) { ar = 0.95; ag = 0.46; ab = 0.1; ks = 0.6; }
+          else { var c = ((Math.floor(Px * 0.9) + Math.floor(Pz * 0.9)) & 1) ? chkA : chkB; ar = c; ag = c; ab = c; ks = 0.05; }
+          if (MM === 5) {
+            var lv = diff * sh, band = lv > 0.55 ? 1 : lv > 0.2 ? 0.6 : 0.28, sp = isKnot && sh > 0.5 && nh > 0.975 ? 0.55 : 0;
+            cr = ar * (0.3 + 0.7 * band) + sp; cg = ag * (0.3 + 0.7 * band) + sp; cbl = ab * (0.3 + 0.7 * band) + sp;
+          } else {
+            var amb = 0.38 + 0.1 * ny, la = amb + 0.82 * diff * sh, sp2 = Math.pow(nh, 44) * ks * sh;
+            cr = ar * la + sp2; cg = ag * la + sp2; cbl = ab * la + sp2;
+          }
+          cr = Math.min(255, cr * 255); cg = Math.min(255, cg * 255); cbl = Math.min(255, cbl * 255);
+          if (!isKnot) {
+            var f = Math.max(0, Math.min(1, (Math.hypot(Px, Pz) - 2.9) / 1.4)), bg = bgRow[py];
+            cr = cr * (1 - f) + bg * f; cg = cg * (1 - f) + bg * f; cbl = cbl * (1 - f) + bg * f;
+          }
+          px[op] = cr; px[op + 1] = cg; px[op + 2] = cbl;
+        }
+      }
+      if (MM === 5) {
+        var oc = dark ? 4 : 22;
+        for (var ey2 = 0; ey2 < H - 1; ey2++) for (var ex2 = 0; ex2 < W - 1; ex2++) {
+          i = ey2 * W + ex2; var t0 = ib[i], t1 = ib[i + 1], t2 = ib[i + W];
+          var k0 = t0 >= 0 && tobj[t0] === 0, k1 = t1 >= 0 && tobj[t1] === 0, k2 = t2 >= 0 && tobj[t2] === 0;
+          if (!(k0 || k1 || k2)) continue;
+          if (Math.abs(zb[i] - zb[i + 1]) > 0.3 || Math.abs(zb[i] - zb[i + W]) > 0.3) { var oe = i * 4; px[oe] = oc; px[oe + 1] = oc; px[oe + 2] = oc; }
+        }
+      }
+    }
+
+    var hv = S.hover;
+    if (hv && hv.x >= 0 && hv.y >= 0 && hv.x < W && hv.y < H) {
+      var hi = hv.y * W + hv.x, ht = ib[hi];
+      var rastered = mode !== 'points' && mode !== 'wire' && mode !== 'cull' && mode !== 'smap';
+      hud.insp = 'PX ' + hv.x + ',' + hv.y + (rastered ? (ht >= 0 ? ' · Z ' + zb[hi].toFixed(3) + ' · TRI #' + ht + ' · ' + (tobj[ht] === 0 ? 'KNOT' : 'FLOOR') : ' · BACKGROUND') : '');
+      for (var q = -4; q <= 4; q++) {
+        var pts = [[hv.x + q, hv.y - 4], [hv.x + q, hv.y + 4], [hv.x - 4, hv.y + q], [hv.x + 4, hv.y + q]];
+        for (var pi = 0; pi < 4; pi++) { var X2 = pts[pi][0], Y2 = pts[pi][1]; if (X2 >= 0 && Y2 >= 0 && X2 < W && Y2 < H) { var o3 = (Y2 * W + X2) * 4; px[o3] = 240; px[o3 + 1] = 122; px[o3 + 2] = 26; } }
+      }
+    } else hud.insp = '';
+
+    hud.drawn = drawn; hud.culled = culled; hud.pixels = pixels;
+    ctx.putImageData(img, 0, 0);
+  }
+
+  // Frame loop: only runs while the renderer is on screen.
+  var hudFrame = document.getElementById('hud-frame'), hudTris = document.getElementById('hud-tris'), hudInspect = document.getElementById('hud-inspect');
+  var fmt = function (v) { return Math.round(v).toLocaleString('en-US'); };
+  var visible = true, prev = performance.now(), lastHud = 0, raf = 0;
+  function loop(now) {
+    var dt = Math.min(50, Math.max(1, now - prev)); prev = now;
+    if (!reduced) S.time += dt;
+    var t0 = performance.now(); renderScene(); var ms = performance.now() - t0;
+    hud.ms = hud.ms * 0.9 + ms * 0.1; hud.fps = hud.fps * 0.9 + (1000 / dt) * 0.1;
+    if (now - lastHud > 125) {
+      lastHud = now;
+      hudFrame.textContent = cv.width + '×' + cv.height + ' · ' + hud.ms.toFixed(1) + ' MS · ' + fmt(hud.fps) + ' FPS';
+      hudTris.textContent = 'TRIS ' + fmt(M.nT) + ' · DRAWN ' + fmt(hud.drawn) + ' · CULLED ' + fmt(hud.culled) + ' · PX ' + fmt(hud.pixels);
+      hudInspect.textContent = hud.insp || 'HOVER TO INSPECT A PIXEL';
+    }
+    raf = visible ? requestAnimationFrame(loop) : 0;
+  }
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function (es) {
+      visible = es[0].isIntersecting;
+      if (visible && !raf) { prev = performance.now(); raf = requestAnimationFrame(loop); }
+    }).observe(cv);
+  }
+  raf = requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
