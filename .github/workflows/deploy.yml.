@@ -1,0 +1,71 @@
+name: Deploy hambup.me
+
+on:
+  push:
+    branches: [main]
+  repository_dispatch:
+    types: [docs-updated]
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the portfolio
+        uses: actions/checkout@v4
+        with:
+          path: portfolio
+
+      - name: Check out the rasterizer docs
+        uses: actions/checkout@v4
+        with:
+          repository: HambuP/software-rasterizer
+          path: docs-src
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install MkDocs Material
+        run: pip install "mkdocs-material==9.6.23"
+
+      - name: Build the docs into /rasterizer
+        run: |
+          mkdocs build \
+            --config-file docs-src/mkdocs.yml \
+            --site-dir "$GITHUB_WORKSPACE/_site/rasterizer"
+          rm -rf "_site/rasterizer/CNAME" "_site/rasterizer/rasterizer"
+
+      - name: Add the portfolio at the root
+        run: |
+          rsync -a \
+            --exclude '.git' --exclude '.github' --exclude 'README.md' \
+            portfolio/ _site/
+          touch _site/.nojekyll
+          test -f _site/index.html
+          test -f _site/rasterizer/index.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
